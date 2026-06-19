@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { credsFromHeaders, generateJson, llmAvailable } from "@/lib/llm";
+import { credsFromHeaders, generateJson, isRateLimit, llmAvailable } from "@/lib/llm";
 
 // Translate English -> French and produce a Hindi (Devanagari) phonetic
 // pronunciation guide, word by word, so a Hindi/English speaker can pronounce
@@ -93,6 +93,15 @@ Important: the "hindi" field is always a PRONUNCIATION guide in Devanagari, neve
     return NextResponse.json(result);
   } catch (err) {
     console.error("Translation failed:", err);
+    if (isRateLimit(err)) {
+      return NextResponse.json(
+        {
+          error:
+            "Rate limit reached on the free tier. Wait a minute and retry, switch to Claude, or add billing to your Google key for higher limits.",
+        },
+        { status: 429 },
+      );
+    }
     return NextResponse.json(
       { error: "Translation failed. Please try again." },
       { status: 500 },

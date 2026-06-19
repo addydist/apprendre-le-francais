@@ -27,6 +27,34 @@ const EXAMPLES = [
   "I am learning French to pass the exam.",
 ];
 
+// Cache translations in localStorage so repeating a phrase costs no API quota.
+const CACHE_KEY = "apprendre.translate.cache.v1";
+
+function cacheId(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function readCache(text: string): TranslateResult | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const all = JSON.parse(window.localStorage.getItem(CACHE_KEY) || "{}");
+    return all[cacheId(text)] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(text: string, data: TranslateResult): void {
+  if (typeof window === "undefined") return;
+  try {
+    const all = JSON.parse(window.localStorage.getItem(CACHE_KEY) || "{}");
+    all[cacheId(text)] = data;
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify(all));
+  } catch {
+    // ignore quota / serialization errors
+  }
+}
+
 export function Translator() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,6 +68,15 @@ export function Translator() {
     setLoading(true);
     setError(null);
     setResult(null);
+
+    // Serve from cache first — repeat phrases cost zero API quota.
+    const cached = readCache(value);
+    if (cached) {
+      setResult(cached);
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/translate", {
         method: "POST",
@@ -49,6 +86,7 @@ export function Translator() {
       const data = (await res.json()) as TranslateResult;
       if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
       setResult(data);
+      if (!data.unavailable) writeCache(value, data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -109,8 +147,8 @@ export function Translator() {
       {result?.unavailable && (
         <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
           🔑 This feature needs an AI key. Open the <strong>AI key</strong> panel above,
-          paste your own Anthropic (Claude) or Google Gemini key, and try again. It&apos;s
-          saved only in your browser — no account needed.
+          paste your own Anthropic (Claude), Google Gemini, or OpenAI key, and try
+          again. It&apos;s saved only in your browser — no account needed.
         </div>
       )}
 

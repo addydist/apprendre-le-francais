@@ -22,6 +22,11 @@ const PROVIDER_INFO: Record<
     placeholder: "AIza... / your Gemini key",
     getKeyUrl: "https://aistudio.google.com/apikey",
   },
+  openai: {
+    label: "OpenAI",
+    placeholder: "sk-...",
+    getKeyUrl: "https://platform.openai.com/api-keys",
+  },
 };
 
 export function ApiKeySettings({ defaultOpen = false }: { defaultOpen?: boolean }) {
@@ -86,12 +91,12 @@ export function ApiKeySettings({ defaultOpen = false }: { defaultOpen?: boolean 
           </p>
 
           {/* Provider toggle */}
-          <div className="flex gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {(Object.keys(PROVIDER_INFO) as Provider[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setProvider(p)}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${
+                className={`rounded-lg border px-2 py-2 text-center text-xs font-medium ${
                   provider === p
                     ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300"
                     : "border-zinc-200 dark:border-zinc-700"

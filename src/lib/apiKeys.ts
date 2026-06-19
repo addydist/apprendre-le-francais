@@ -8,7 +8,7 @@
 
 "use client";
 
-export type Provider = "anthropic" | "gemini";
+export type Provider = "anthropic" | "gemini" | "openai";
 
 export interface ApiCreds {
   provider: Provider;
@@ -23,9 +23,8 @@ export function loadCreds(): ApiCreds | null {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ApiCreds;
-    if (!parsed.key || (parsed.provider !== "anthropic" && parsed.provider !== "gemini")) {
-      return null;
-    }
+    const ok = parsed.provider === "anthropic" || parsed.provider === "gemini" || parsed.provider === "openai";
+    if (!parsed.key || !ok) return null;
     return parsed;
   } catch {
     return null;
