@@ -60,9 +60,8 @@ export function WritingGrader({
         <p className="mt-1 text-sm text-zinc-500">Niveau estimé : {result.level}</p>
         {result.fallback && (
           <p className="mt-2 rounded-lg bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
-            AI grading is offline (no API key set) — this is a basic word-count
-            estimate. Add your own AI key in the &ldquo;AI key&rdquo; panel on the
-            dashboard for full grammar feedback.
+            This is a basic word-count estimate. Detailed grammar feedback needs an
+            AI provider configured on the server.
           </p>
         )}
         {result.strengths.length > 0 && (

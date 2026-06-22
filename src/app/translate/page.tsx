@@ -18,6 +18,11 @@ export default function TranslatePage() {
           nail tricky French sounds (nasal vowels, the French «&nbsp;r&nbsp;», silent
           endings) far more easily than English spelling can.
         </p>
+        <p className="mt-2 text-sm text-zinc-400">
+          Works with no API key — translation uses a free service and the Hindi
+          pronunciation is generated offline on your device. Adding an AI key (below)
+          just upgrades the translation quality and word meanings.
+        </p>
       </header>
       <Translator />
     </main>

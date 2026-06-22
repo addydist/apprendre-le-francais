@@ -6,7 +6,6 @@ import { useProgress } from "@/lib/useProgress";
 import { dueCards, estimateLevel, type ProgressState } from "@/lib/progress";
 import { VoiceSettings } from "./VoiceSettings";
 import { FrenchVoiceWarning } from "./FrenchVoiceWarning";
-import { ApiKeySettings } from "./ApiKeySettings";
 
 function Stat({
   label,
@@ -81,8 +80,7 @@ export function Dashboard() {
         cards. Fifteen focused minutes a day is what gets you to B2 — not cramming.
       </p>
 
-      {/* Setup: AI key + voice */}
-      <ApiKeySettings />
+      {/* Voice setup */}
       <FrenchVoiceWarning />
       <VoiceSettings />
 

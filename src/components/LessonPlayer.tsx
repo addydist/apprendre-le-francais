@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { Exercise, Lesson, VocabItem } from "@/lib/types";
 import { isAnswerCorrect } from "@/lib/compare";
 import { speakFrench, ttsAvailable } from "@/lib/speak";
+import { frenchWordToDevanagari } from "@/lib/frenchPhonetics";
 import { useProgress } from "@/lib/useProgress";
 import { completeLesson, reviewCard } from "@/lib/progress";
 import { getNextLesson } from "@/lib/curriculum";
@@ -228,6 +229,10 @@ function Flashcard({
             <SpeakBtn text={ex.vocab.exampleFr || ex.vocab.fr} />
           </span>
         </div>
+        {/* Offline Hindi pronunciation hint (no API) */}
+        <p className="mt-2 text-lg text-orange-600 dark:text-orange-400" lang="hi">
+          {frenchWordToDevanagari(ex.vocab.fr)}
+        </p>
         {revealed ? (
           <div className="mt-4">
             <p className="text-xl text-zinc-600 dark:text-zinc-300">{ex.vocab.en}</p>

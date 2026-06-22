@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { speakFrench, ttsAvailable } from "@/lib/speak";
+import { frenchToDevanagari, frenchWordToDevanagari } from "@/lib/frenchPhonetics";
 import { authHeaders } from "@/lib/apiKeys";
 import { FrenchVoiceWarning } from "./FrenchVoiceWarning";
-import { ApiKeySettings } from "./ApiKeySettings";
 
 interface WordBreakdown {
   french: string;
@@ -18,6 +18,21 @@ interface TranslateResult {
   words: WordBreakdown[];
   unavailable?: boolean;
   error?: string;
+}
+
+// Fill in the Hindi pronunciation from the offline engine. The LLM only
+// returns french + word meanings now; pronunciation is computed here so it's
+// consistent with the flashcards, instant, and free.
+function withPronunciation(data: TranslateResult): TranslateResult {
+  if (data.unavailable || !data.french) return data;
+  return {
+    ...data,
+    pronunciationHi: frenchToDevanagari(data.french),
+    words: (data.words ?? []).map((w) => ({
+      ...w,
+      hindi: frenchWordToDevanagari(w.french),
+    })),
+  };
 }
 
 const EXAMPLES = [
@@ -55,24 +70,75 @@ function writeCache(text: string, data: TranslateResult): void {
   }
 }
 
+// Remember the last input + result so they survive leaving and returning to
+// the tab (the component unmounts on route change, which would reset state).
+const LAST_TEXT_KEY = "apprendre.translate.lastText";
+const LAST_RESULT_KEY = "apprendre.translate.lastResult";
+
+function saveLastText(t: string): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LAST_TEXT_KEY, t);
+  } catch {}
+}
+
+function saveLastResult(r: TranslateResult | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (r) window.localStorage.setItem(LAST_RESULT_KEY, JSON.stringify(r));
+    else window.localStorage.removeItem(LAST_RESULT_KEY);
+  } catch {}
+}
+
+function loadLastText(): string {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem(LAST_TEXT_KEY) || "";
+}
+
+function loadLastResult(): TranslateResult | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LAST_RESULT_KEY);
+    return raw ? (JSON.parse(raw) as TranslateResult) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function Translator() {
   const [text, setText] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<TranslateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Restore the last input + result when the tab is reopened.
+  useEffect(() => {
+    setText(loadLastText());
+    const last = loadLastResult();
+    if (last) setResult(withPronunciation(last));
+  }, []);
+
+  function updateText(v: string) {
+    setText(v);
+    saveLastText(v);
+  }
+
   async function translate(input?: string) {
     const value = (input ?? text).trim();
     if (!value) return;
-    if (input) setText(input);
+    if (input) updateText(input);
+    else saveLastText(value);
     setLoading(true);
     setError(null);
     setResult(null);
+    saveLastResult(null);
 
     // Serve from cache first — repeat phrases cost zero API quota.
     const cached = readCache(value);
     if (cached) {
-      setResult(cached);
+      const enriched = withPronunciation(cached);
+      setResult(enriched);
+      saveLastResult(enriched);
       setLoading(false);
       return;
     }
@@ -83,10 +149,15 @@ export function Translator() {
         headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ text: value }),
       });
-      const data = (await res.json()) as TranslateResult;
-      if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
+      const raw = (await res.json()) as TranslateResult;
+      if (!res.ok) throw new Error(raw.error || `Server error ${res.status}`);
+      // Generate the Hindi pronunciation locally (offline engine), not the LLM.
+      const data = withPronunciation(raw);
       setResult(data);
-      if (!data.unavailable) writeCache(value, data);
+      if (!data.unavailable) {
+        writeCache(value, data);
+        saveLastResult(data);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -97,14 +168,13 @@ export function Translator() {
   return (
     <div className="space-y-6">
       <FrenchVoiceWarning />
-      <ApiKeySettings />
 
       {/* Input */}
       <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <label className="text-sm font-medium">Type something in English</label>
         <textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => updateText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) translate();
           }}
@@ -142,14 +212,6 @@ export function Translator() {
         <p className="rounded-xl bg-rose-50 p-4 text-sm text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">
           {error}
         </p>
-      )}
-
-      {result?.unavailable && (
-        <div className="rounded-xl bg-amber-50 p-4 text-sm text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
-          🔑 This feature needs an AI key. Open the <strong>AI key</strong> panel above,
-          paste your own Anthropic (Claude), Google Gemini, or OpenAI key, and try
-          again. It&apos;s saved only in your browser — no account needed.
-        </div>
       )}
 
       {result && !result.unavailable && (
